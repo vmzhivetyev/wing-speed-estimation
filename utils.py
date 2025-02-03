@@ -15,7 +15,7 @@ def format_seconds(seconds):
 def calculate_bbx_loop_range(data_dict):
     dt = data_dict['dt']
     total_lines = data_dict["total_lines"]
-    step_size = max(1, int(dt_target / dt))
+    step_size = 1
     
     # Find the start index based on time_start
     start_idx = next(i for i, t in enumerate(data_dict[header_time]) if t >= time_start)

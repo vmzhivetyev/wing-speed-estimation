@@ -2,7 +2,7 @@ import math
 import os
 
 # change this between True/False if you need to run automatic parameters finding
-calculate = True
+calculate = False
 
 # user defined parameters
 max_voltage = 4.2 * 4  # volts
@@ -10,19 +10,19 @@ mass = 0.270  # kilograms
 motor_kv = 4500
 
 # ranges of parameters for the automatic algorithm to find best values
-range_pitch_offset = [-15, 15]  # degrees
+range_pitch_offset = [-12.45, -12.45]  # degrees
 
-range_delay = (0.1, 2)  # seconds
-range_gravity = (0.1, 10)  # percents / 100
+# range_delay = (0.1, 2)  # seconds
+# range_gravity = (0.1, 10)  # percents / 100
 
-range_thrust = (0.8, 1.2)  # kilograms
+range_thrust = (1.53, 1.53)  # kilograms
 # range_thrust = (0.1, 1.5)  # kilograms
 range_prop_pitch = (2.4, 2.4)  # inches
-range_drag_k = (0.001, 0.09)
+range_drag_k = (0.0001, 0.01)
 
 # parameters to plot with, when automatic parameters finding is False (OFF)
 prop_pitch = 2  # inches
-drag_k = 0.0046
+drag_k = 0.001704
 thrust = 1  # kilograms
 pitch_offset_basic = 15  # degrees
 pitch_offset_advanced = 0  # degrees
@@ -39,12 +39,12 @@ def print_cli_settings():
     settings_text = (
         f"\n"
         f"XXXX print_cli_settings: PID: {os.getpid()}, Called print_cli_settings()\n"
-        f"#========================================\n"
-        f"set tpa_speed_type = BASIC\n"
-        f"set tpa_speed_basic_delay = {round(tpa_delay * 1000)}\n"
-        f"set tpa_speed_basic_gravity = {round(tpa_gravity * 100)}\n"
-        # f"set tpa_speed_max_voltage = {round(max_voltage * 100)}\n"
-        f"set tpa_speed_pitch_offset = {round(pitch_offset_basic * 10)}\n"
+        # f"#========================================\n"
+        # f"set tpa_speed_type = BASIC\n"
+        # f"set tpa_speed_basic_delay = {round(tpa_delay * 1000)}\n"
+        # f"set tpa_speed_basic_gravity = {round(tpa_gravity * 100)}\n"
+        # # f"set tpa_speed_max_voltage = {round(max_voltage * 100)}\n"
+        # f"set tpa_speed_pitch_offset = {round(pitch_offset_basic * 10)}\n"
         f"#========================================\n"
         f"set tpa_speed_type = ADVANCED\n"
         f"set tpa_speed_adv_mass = {round(mass * 1000)}\n"

@@ -46,11 +46,28 @@ def read_csv_as_dict(file_path):
     data_dict[header_pitch] = data_dict[header_pitch] * header_pitch_multiplier_to_rad
     data_dict[header_roll] = data_dict[header_roll] * header_pitch_multiplier_to_rad
     data_dict[header_voltage] = data_dict[header_voltage] * header_voltage_multiplier_to_volts
+    data_dict['amperageLatest'] /= 100
+
+    def parse_dshot_rpm_telemetry(value, motor_poles) -> float:
+        """
+        :param value: as is in log file
+        :param motor_poles: number of poles in the motor. If 0 then use value from `self.params['motor_poles']`.
+        :return: motor rpm
+        """
+        return value * 200 / motor_poles
+
+    for key in list(data_dict.keys()):
+        if key.startswith('eRPM'):
+            rpm_key = key.replace('eRPM', 'true_rpm')
+            data_dict[rpm_key] = parse_dshot_rpm_telemetry(np.array(data_dict[key]), motor_poles=12)
+            print(rpm_key, data_dict[rpm_key])
 
     #motor_columns = [col for col in column_names if col.startswith('motor[')]
     #throttle_values = np.mean([data_dict[col] for col in motor_columns], axis=0)
     #data_dict['Throttle'] = throttle_values / 2048
     data_dict['Throttle'] = data_dict[header_throttle]/1000
+
+
 
     # Adjust the "time" column to start from zero
     time_values = data_dict[header_time]
