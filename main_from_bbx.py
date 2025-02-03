@@ -56,7 +56,7 @@ def get_optimal_params(get_error_with_data, bounds, sim_name):
         #recombination=0.9, 
         #tol=0.0001, 
         #maxiter=3000, 
-        #strategy='rand2bin'
+        strategy='randtobest1bin'
         )
     seconds = time.time() - start_time
     print(f"{sim_name} optimization time: {format_seconds(seconds)}")
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     # Example usage of the function
     print(f"XXXX __main__ print_cli_settings: PID: {os.getpid()}, Called print_cli_settings()")
 
-    file_path = 'logs/black_basic_tuned.bbl.csv'
-    file_path = select_csv_file("logs")
+    file_path = 'logs/speed_foam/btfl_006.bbl.csv'
+    # file_path = select_csv_file("logs")
     data_dict = read_csv_as_dict(file_path)
 
     bbx_loop_range = calculate_bbx_loop_range(data_dict=data_dict)
@@ -175,4 +175,5 @@ if __name__ == '__main__':
 
     # Show the plot
 print_cli_settings()
+plt.tight_layout()
 plt.show()
