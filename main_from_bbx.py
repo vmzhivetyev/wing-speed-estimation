@@ -17,11 +17,11 @@ import sys
 
 
 def evaluate(sim, bbx_loop_range, needs_results, context):
-    v = 0
     error = 0
     count = 0
 
     dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms = context
+    v = next(x for x in gps_speeds if not math.isnan(x))
 
     v_results = []
 
@@ -107,7 +107,8 @@ if __name__ == '__main__':
     # Example usage of the function
     print(f"XXXX __main__ print_cli_settings: PID: {os.getpid()}, Called print_cli_settings()")
 
-    file_path = 'logs/speed_foam/btfl_006.bbl.csv'
+    file_path = 'logs/speed_foam/dive.csv'
+    # file_path = 'logs/speed_foam/btfl_006.bbl.csv'
     # file_path = select_csv_file("logs")
     data_dict = read_csv_as_dict(file_path)
 
@@ -141,7 +142,6 @@ if __name__ == '__main__':
     data_pitch_degrees = data_dict[header_pitch] * 180 / math.pi  # Pitch values
 
     valid_gps_speeds = [val for val in data_gps_speed if not math.isnan(val)]
-    max_y_value = np.max(valid_gps_speeds + data_sim_advanced)  # data_sim_basic
 
     # Create the figure
     fig, (ax_gps_speed, ax3) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [7, 3]})
@@ -150,11 +150,19 @@ if __name__ == '__main__':
     # Adjust the space between plots to zero
     plt.subplots_adjust(hspace=0)
 
+    colors_gps_speed = 'red'
+    colors_sim_speed = 'tab:blue'
+    lw = 1
+
+    data_gps_speed = np.multiply(data_gps_speed, 3.6)
+    data_sim_advanced = np.multiply(data_sim_advanced, 3.6)
+    max_y_value = max(max(valid_gps_speeds), max(data_sim_advanced)) * 1.2
+
     # First plot (GPS Speed over Time)
-    line_gps_speed = ax_gps_speed.plot(data_time, data_gps_speed, label='GPS Speed', color='r')[0]
-    ax_gps_speed.set_ylabel('GPS Speed', color='r')
-    ax_gps_speed.set_title('GPS Speed over Time')
-    ax_gps_speed.tick_params(axis='y', labelcolor='r')
+    label_gps_speed = 'GPS Speed (m/s)'
+    line_gps_speed = ax_gps_speed.plot(data_time, data_gps_speed, label=label_gps_speed, color=colors_gps_speed, lw=lw)[0]
+    ax_gps_speed.set_ylabel(label_gps_speed, color=colors_gps_speed)
+    ax_gps_speed.tick_params(axis='y', labelcolor=colors_gps_speed)
     ax_gps_speed.grid(True)
 
     # Create a secondary y-axis for the simple simulation
@@ -164,12 +172,15 @@ if __name__ == '__main__':
     # ax_simulation1.tick_params(axis='y', labelcolor='g')
 
     ax_simulation2 = ax_gps_speed.twinx()
-    ax_simulation2.spines['right'].set_position(('outward', 60))
-    line_simulation2 = ax_simulation2.plot(data_time, data_sim_advanced,
-                                           label=f'Advanced Simulation\n(err = {math.sqrt(error_advanced / math.pi * 2):.2f})',
-                                           color='b')[0]
-    ax_simulation2.set_ylabel('Advanced Simulation', color='b')
-    ax_simulation2.tick_params(axis='y', labelcolor='b')
+    ax_simulation2.spines['right'].set_position(('outward', 20))
+    line_simulation2 = ax_simulation2.plot(
+        data_time,
+        data_sim_advanced,
+        label=f'Advanced Simulation\n(err = {math.sqrt(error_advanced / math.pi * 2):.2f})',
+        color=colors_sim_speed
+    )[0]
+    ax_simulation2.set_ylabel('Advanced Simulation', color=colors_sim_speed)
+    ax_simulation2.tick_params(axis='y', labelcolor=colors_sim_speed)
 
     lines = [line_gps_speed, line_simulation2]
     labels = [line.get_label() for line in lines]
@@ -180,20 +191,22 @@ if __name__ == '__main__':
     ax_simulation2.set_ylim(0, max_y_value)
 
     # Second plot (Throttle and Pitch over Time)
-    ax3.plot(data_time, data_throttle, 'r', label='Throttle')  # Plot throttle in red
-    ax3.set_ylabel('Throttle', color='red')
-    ax3.tick_params(axis='y', colors='red')
-    ax3.grid(axis='y', linestyle=':', color='red')  # Make only throttle horizontal grid marks red and dotted
+    throttle_color = 'orange'
+    ax3.plot(data_time, data_throttle, throttle_color, label='Throttle')  # Plot throttle in red
+    ax3.set_ylabel('Throttle', color=throttle_color)
+    ax3.tick_params(axis='y', colors=throttle_color)
+    ax3.grid(axis='y', linestyle=':', color=throttle_color)  # Make only throttle horizontal grid marks red and dotted
     ax3.grid(axis='x')  # Keep vertical lines the same as the top plot
     ax3.set_ylim(0, 1.1)
 
     # Create a second Y-axis on the right for pitch
+    pitch_color = 'green'
     ax4 = ax3.twinx()
-    ax4.plot(data_time, data_pitch_degrees, 'b', label='Pitch')  # Plot pitch in blue
-    ax4.set_ylabel('Pitch', color='blue')
-    ax4.tick_params(axis='y', colors='blue')
+    ax4.plot(data_time, data_pitch_degrees, pitch_color, label='Pitch')  # Plot pitch in blue
+    ax4.set_ylabel('Pitch', color=pitch_color)
+    ax4.tick_params(axis='y', colors=pitch_color)
     ax4.set_ylim(-100, 100)
-    ax4.axhline(0, linestyle=':', color='blue')  # Add a dotted blue line at pitch = 0
+    ax4.axhline(0, linestyle=':', color=pitch_color)  # Add a dotted blue line at pitch = 0
 
     # Align the legends
     # ax2.legend(loc='upper left')
