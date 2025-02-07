@@ -12,7 +12,7 @@ motor_kv = 4500
 # ranges of parameters for the automatic algorithm to find best values
 
 # old
-range_pitch_offset = [-5, 5]  # degrees
+range_pitch_offset = [-15, -5]  # degrees
 # range_pitch_offset = [-12.45, -12.45]  # degrees
 
 # range_delay = (0.1, 2)  # seconds
@@ -28,9 +28,9 @@ range_drag_k = (0.0001, 0.01)
 # parameters to plot with, when automatic parameters finding is False (OFF)
 prop_pitch = 2.4  # inches
 drag_k = 0.0015
-thrust = 1.53  # kilograms
-pitch_offset_basic = 15  # degrees
-pitch_offset_advanced = -12.45  # degrees
+thrust = 0.8  # kilograms
+pitch_offset_basic = 0  # degrees
+pitch_offset_advanced = -15  # degrees
 
 tpa_delay = 0.5
 tpa_gravity = 0.5

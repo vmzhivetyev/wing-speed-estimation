@@ -31,7 +31,6 @@ class SimAdvanced_:
         return a
 
 
-
 class SimAdvanced:
     def __init__(self, in_pitch_offset=0, in_thrust=4, in_prop_pitch=2.4, in_drag_k=0.0045):
         self.g = 9.81  # Gravity (m/s^2)
@@ -44,7 +43,7 @@ class SimAdvanced:
         self.max_rpm = self.motor_kv * self.max_voltage  # Theoretical max RPM
         self.pitch_offset = in_pitch_offset
 
-    def get_acceleration(self, speed, roll, pitch, rpms, voltage, total_current, throttle):
+    def step(self, speed, roll, pitch, rpms, voltage, total_current, throttle):
         standby_current = 0.5
         all_motors_current = max(0, total_current - standby_current)
 
@@ -62,25 +61,26 @@ class SimAdvanced:
             thrust_force = max(0, thrust_coef * self.twr * self.mass * self.g)
 
         # Compute drag
-        drag_force = self.drag_coefficient * speed ** 2
+        drag_force = - self.drag_coefficient * speed ** 2
 
         # Compute gravity effect
-        corrected_pitch = pitch + math.cos(math.radians(pitch)) * math.cos(math.radians(roll)) * self.pitch_offset
-        gravity_force = - self.mass * self.g * math.sin(math.radians(corrected_pitch))
+        corrected_pitch = math.degrees(pitch) + self.pitch_offset
+        gravity_force = self.mass * self.g * math.sin(math.radians(corrected_pitch)) * math.cos(math.radians(roll))
 
         # Optional: Consider electrical power losses if current is provided
         # Rough estimate of power loss: resistive + inefficiencies
         V_motor = throttle * voltage  # Effective voltage applied to motors
 
         input_power = V_motor * all_motors_current  # Power actually going to the motors
-        power_loss = 0.1 * all_motors_current ** 2  # Example resistive + inefficiency losses
+        power_loss = 0.01 * all_motors_current ** 2  # Example resistive + inefficiency losses
         loss_thrust_coeff = np.clip(1 - power_loss / max(input_power, 1e-2), 0, 1)
         thrust_force *= loss_thrust_coeff  # Apply scaling
 
         # Compute acceleration
-        net_force = thrust_force - drag_force - gravity_force
+        net_force = thrust_force + drag_force + gravity_force
         a = net_force / self.mass
-        return a
+        assert speed < 200 / 3.6
+        return a, thrust_force, drag_force, gravity_force, input_power, power_loss
 
 
 '''

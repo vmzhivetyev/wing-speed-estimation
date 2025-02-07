@@ -24,9 +24,13 @@ def evaluate(sim, bbx_loop_range, needs_results, context):
     v = next(x for x in gps_speeds if not math.isnan(x))
 
     v_results = []
+    steps = []
 
     for i in bbx_loop_range:
-        v = v + sim.get_acceleration(v, rolls[i], pitches[i], rpms[i], voltages[i], currents[i], throttles[i]) * dt
+        step_data = sim.step(v, rolls[i], pitches[i], rpms[i], voltages[i], currents[i], throttles[i])
+        steps.append(step_data)
+        a, thrust_force, drag_force, gravity_force, input_power, power_loss = step_data
+        v = v + a * dt
         v = max(v, 0)
         if needs_results:
             v_results.append(v)
@@ -36,7 +40,7 @@ def evaluate(sim, bbx_loop_range, needs_results, context):
             error = error + d_error
             count = count + 1
 
-    return error / count, v_results
+    return error / count, v_results, steps
 
 
 def get_error_sim_advanced(params, bbx_loop_range, context):
@@ -44,7 +48,7 @@ def get_error_sim_advanced(params, bbx_loop_range, context):
     param_pitch_offset, param_thrust, param_prop_pitch, param_drag_coefficient = params
     sim = SimAdvanced(param_pitch_offset, param_thrust, param_prop_pitch, param_drag_coefficient)
     t = time.time()
-    error, _ = evaluate(sim, bbx_loop_range, needs_results=False, context=context)
+    error, _, _ = evaluate(sim, bbx_loop_range, needs_results=False, context=context)
     e = time.time()
     # Assuming `params` is a list or array of float values
     formatted_params = ' '.join(f'{p:8.5f}' for p in params)  # 8.2f gives 2 decimal points with a width of 8 characters
@@ -134,7 +138,7 @@ if __name__ == '__main__':
     # sim_basic = Sim_basic(in_pitch_offset=settings.pitch_offset_basic, in_gravity=settings.tpa_gravity, in_delay=settings.tpa_delay)
 
     # error_basic = get_error(sim_basic, data_dict, bbx_loop_range)
-    error_advanced, data_sim_advanced = evaluate(sim_advanced, bbx_loop_range, needs_results=True, context=context)
+    error_advanced, data_sim_advanced, steps_sim_advanced = evaluate(sim_advanced, bbx_loop_range, needs_results=True, context=context)
 
     data_time = data_dict[header_time]  # Time in seconds
     data_gps_speed = data_dict[header_gps_speed]  # GPS speed values
@@ -144,7 +148,7 @@ if __name__ == '__main__':
     valid_gps_speeds = [val for val in data_gps_speed if not math.isnan(val)]
 
     # Create the figure
-    fig, (ax_gps_speed, ax3) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [7, 3]})
+    fig, (ax_gps_speed, ax_dbg, ax3) = plt.subplots(3, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [7, 5, 3]})
     fig.subplots_adjust(right=0.8)
 
     # Adjust the space between plots to zero
@@ -157,6 +161,7 @@ if __name__ == '__main__':
     data_gps_speed = np.multiply(data_gps_speed, 3.6)
     data_sim_advanced = np.multiply(data_sim_advanced, 3.6)
     max_y_value = max(max(valid_gps_speeds), max(data_sim_advanced)) * 1.2
+    max_y_value =  min(max_y_value, 200)
 
     # First plot (GPS Speed over Time)
     label_gps_speed = 'GPS Speed (m/s)'
@@ -189,6 +194,15 @@ if __name__ == '__main__':
     ax_gps_speed.set_ylim(0, max_y_value)
     # ax_simulation1.set_ylim(0, max_y_value)
     ax_simulation2.set_ylim(0, max_y_value)
+
+    # AX BTW
+    a, thrust_force, drag_force, gravity_force, input_power, power_loss = np.transpose(steps_sim_advanced)
+    ax_dbg.plot(data_time, thrust_force, label='thrust_force')
+    ax_dbg.plot(data_time, drag_force, label='drag_force')
+    ax_dbg.plot(data_time, gravity_force, label='gravity_force')
+    ax_dbg.plot(data_time, np.sum((thrust_force, drag_force, gravity_force), axis=0), label='total')
+    ax_dbg.legend()
+    ax_dbg.grid(True)
 
     # Second plot (Throttle and Pitch over Time)
     throttle_color = 'orange'
