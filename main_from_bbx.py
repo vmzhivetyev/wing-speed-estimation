@@ -46,7 +46,13 @@ def evaluate(sim, bbx_loop_range, needs_results, context):
 def get_error_sim_advanced(params, bbx_loop_range, context):
     # print(f'get_error_sim_advanced {params}')
     param_pitch_offset, param_thrust, param_prop_pitch, param_drag_coefficient = params
-    sim = SimAdvanced(param_pitch_offset, param_thrust, param_prop_pitch, param_drag_coefficient)
+    config = AdvancedConfig()
+    config.pitch_offset_advanced = param_pitch_offset
+    config.thrust = param_thrust
+    config.prop_pitch = param_prop_pitch
+    config.drag_k = param_drag_coefficient
+
+    sim = SimAdvanced(config=config)
     t = time.time()
     error, _, _ = evaluate(sim, bbx_loop_range, needs_results=False, context=context)
     e = time.time()
@@ -111,20 +117,30 @@ if __name__ == '__main__':
     # Example usage of the function
     print(f"XXXX __main__ print_cli_settings: PID: {os.getpid()}, Called print_cli_settings()")
 
+    # get_error_sim_advanced error:  19.83 params: -10.00000  1.00000  2.40000  0.00235 took: 0.147s
     file_path = 'logs/speed_foam/dive.csv'
-    # file_path = 'logs/speed_foam/btfl_006.bbl.csv'
+
+    file_path = 'logs/speed_foam/btfl_006.bbl.csv'
+
     # file_path = select_csv_file("logs")
     data_dict = read_csv_as_dict(file_path)
 
     bbx_loop_range = calculate_bbx_loop_range(data_dict=data_dict)
     context = make_context(data_dict, bbx_loop_range)
 
+    config = settings.AdvancedConfig()
+
     if settings.calculate:
+        calc_config = CalculationConfig()
         print("Running differential_evolution for ADVANCED")
-        bounds = [range_pitch_offset, range_thrust, range_prop_pitch, range_drag_k]
+        bounds = [calc_config.range_pitch_offset, calc_config.range_thrust, calc_config.range_prop_pitch, calc_config.range_drag_k]
         get_error_with_data = partial(get_error_sim_advanced, bbx_loop_range=bbx_loop_range, context=context)
         optimal_params = get_optimal_params(get_error_with_data, bounds, "ADVANCED")
-        settings.pitch_offset_advanced, settings.thrust, settings.prop_pitch, settings.drag_k = optimal_params
+        new_pitch_offset_advanced, new_thrust, new_prop_pitch, new_drag_k = optimal_params
+        config.pitch_offset_advanced = new_pitch_offset_advanced
+        config.thrust = new_thrust
+        config.prop_pitch = new_prop_pitch
+        config.drag_k = new_drag_k
 
     # if settings.calculate:
     #     print("Running differential_evolution for BASIC")
@@ -133,8 +149,7 @@ if __name__ == '__main__':
     #     optimal_params = get_optimal_params(get_error_with_data, bounds, "BASIC")
     #     settings.pitch_offset_basic, settings.tpa_gravity, settings.tpa_delay = optimal_params
 
-    sim_advanced = SimAdvanced(in_pitch_offset=settings.pitch_offset_advanced, in_thrust=settings.thrust,
-                               in_prop_pitch=settings.prop_pitch, in_drag_k=settings.drag_k)
+    sim_advanced = SimAdvanced(config=config)
     # sim_basic = Sim_basic(in_pitch_offset=settings.pitch_offset_basic, in_gravity=settings.tpa_gravity, in_delay=settings.tpa_delay)
 
     # error_basic = get_error(sim_basic, data_dict, bbx_loop_range)
@@ -227,6 +242,6 @@ if __name__ == '__main__':
     # ax3.legend(loc='upper right')
 
     # Show the plot
-print_cli_settings()
-plt.tight_layout()
-plt.show()
+    CLISettingsPrinter.print_cli_settings(advanced=sim_advanced.config)
+    plt.tight_layout()
+    plt.show()

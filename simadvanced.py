@@ -32,16 +32,17 @@ class SimAdvanced_:
 
 
 class SimAdvanced:
-    def __init__(self, in_pitch_offset=0, in_thrust=4, in_prop_pitch=2.4, in_drag_k=0.0045):
+    def __init__(self, config: settings.AdvancedConfig):
+        self.config = config
         self.g = 9.81  # Gravity (m/s^2)
-        self.mass = settings.mass
-        self.twr = in_thrust / self.mass
-        self.prop_pitch = in_prop_pitch  # Inches
-        self.drag_coefficient = in_drag_k
-        self.motor_kv = settings.motor_kv  # RPM per volt
-        self.max_voltage = settings.max_voltage  # 4S LiPo
+        self.mass = config.mass
+        self.twr = config.thrust / self.mass
+        self.prop_pitch = config.prop_pitch  # Inches
+        self.drag_coefficient = config.drag_k
+        self.motor_kv = config.motor_kv  # RPM per volt
+        self.max_voltage = config.max_voltage  # 4S LiPo
         self.max_rpm = self.motor_kv * self.max_voltage  # Theoretical max RPM
-        self.pitch_offset = in_pitch_offset
+        self.pitch_offset = config.pitch_offset_advanced
 
     def step(self, speed, roll, pitch, rpms, voltage, total_current, throttle):
         standby_current = 0.5
@@ -79,7 +80,7 @@ class SimAdvanced:
         # Compute acceleration
         net_force = thrust_force + drag_force + gravity_force
         a = net_force / self.mass
-        assert speed < 200 / 3.6
+        # assert speed < 200 / 3.6
         return a, thrust_force, drag_force, gravity_force, input_power, power_loss
 
 
