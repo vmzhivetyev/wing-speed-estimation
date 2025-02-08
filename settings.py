@@ -2,7 +2,7 @@ import math
 import os
 
 # change this between True/False if you need to run automatic parameters finding
-calculate = True
+calculate = False
 
 
 class CalculationConfig:

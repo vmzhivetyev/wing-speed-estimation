@@ -113,7 +113,85 @@ def make_context(data_dict, bbx_loop_range):
     return dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms
 
 
-if __name__ == '__main__':
+def plot_data(data_dict, sim_data, ax_gps_speed, ax_forces, ax_throttle, colorset, suffix: str):
+    error_data, data_sim_advanced, steps_sim_advanced = sim_data
+
+    data_time = data_dict[header_time]  # Time in seconds
+    data_gps_speed = data_dict[header_gps_speed]  # GPS speed values
+    data_throttle = data_dict['Throttle']  # Throttle values
+    data_pitch_degrees = data_dict[header_pitch] * 180 / math.pi  # Pitch values
+
+    valid_gps_speeds = [val for val in data_gps_speed if not math.isnan(val)]
+
+    # plt.subplots_adjust(hspace=0)
+
+    colors_gps_speed = colorset[0]  # 'red'
+    colors_sim_speed = colorset[1]  # 'tab:blue'
+    throttle_color = colorset[2]  # 'orange'
+    lw = 1
+
+    data_gps_speed = np.multiply(data_gps_speed, 3.6)
+    data_sim_advanced = np.multiply(data_sim_advanced, 3.6)
+    max_y_value = max(max(valid_gps_speeds), max(data_sim_advanced)) * 1.2
+    max_y_value = min(max_y_value, 200)
+
+    # First plot (GPS Speed over Time)
+    label_gps_speed = f'GPS Speed (m/s)'
+    line_gps_speed = ax_gps_speed.plot(data_time, data_gps_speed, label=label_gps_speed, color=colors_gps_speed, lw=lw)[0]
+    ax_gps_speed.set_ylabel(label_gps_speed, color=colors_gps_speed)
+    ax_gps_speed.tick_params(axis='y', labelcolor=colors_gps_speed)
+    ax_gps_speed.grid(True)
+
+    ax_sim_speed = ax_gps_speed.twinx()
+    ax_sim_speed.spines['right'].set_position(('outward', 20))
+    line_simulation2 = ax_sim_speed.plot(
+        data_time,
+        data_sim_advanced,
+        label=f'Advanced Simulation {suffix}',
+        color=colors_sim_speed
+    )[0]
+    ax_sim_speed.set_ylabel(f'Advanced Simulation {suffix}', color=colors_sim_speed)
+    ax_sim_speed.tick_params(axis='y', labelcolor=colors_sim_speed)
+
+    lines = [line_gps_speed, line_simulation2]
+    labels = [line.get_label() for line in lines]
+    ax_gps_speed.legend(lines, labels, loc='upper right')
+
+    ax_gps_speed.set_ylim(0, max_y_value)
+    ax_sim_speed.set_ylim(0, max_y_value)
+
+    # AX BTW
+    a, thrust_force, drag_force, gravity_force, input_power, power_loss = np.transpose(steps_sim_advanced)
+    ax_forces.plot(data_time, thrust_force, label='thrust_force')
+    ax_forces.plot(data_time, drag_force, label='drag_force')
+    ax_forces.plot(data_time, gravity_force, label='gravity_force')
+    ax_forces.plot(data_time, np.sum((thrust_force, drag_force, gravity_force), axis=0), label='total')
+    ax_forces.legend()
+    ax_forces.grid(True)
+
+    # Second plot (Throttle and Pitch over Time)
+    ax_throttle.plot(data_time, data_throttle, throttle_color, label='Throttle')  # Plot throttle in red
+    ax_throttle.set_ylabel('Throttle', color=throttle_color)
+    ax_throttle.tick_params(axis='y', colors=throttle_color)
+    ax_throttle.grid(axis='y', linestyle=':', color=throttle_color)  # Make only throttle horizontal grid marks red and dotted
+    ax_throttle.grid(axis='x')  # Keep vertical lines the same as the top plot
+    ax_throttle.set_ylim(0, 1.1)
+
+    # Create a second Y-axis on the right for pitch
+    pitch_color = 'green'
+    ax4 = ax_throttle.twinx()
+    ax4.plot(data_time, data_pitch_degrees, pitch_color, label='Pitch')  # Plot pitch in blue
+    ax4.set_ylabel('Pitch', color=pitch_color)
+    ax4.tick_params(axis='y', colors=pitch_color)
+    ax4.set_ylim(-100, 100)
+    ax4.axhline(0, linestyle=':', color=pitch_color)  # Add a dotted blue line at pitch = 0
+
+    # Align the legends
+    # ax2.legend(loc='upper left')
+    # ax3.legend(loc='upper right')
+
+
+def main():
     # Example usage of the function
     print(f"XXXX __main__ print_cli_settings: PID: {os.getpid()}, Called print_cli_settings()")
 
@@ -142,106 +220,24 @@ if __name__ == '__main__':
         config.prop_pitch = new_prop_pitch
         config.drag_k = new_drag_k
 
-    # if settings.calculate:
-    #     print("Running differential_evolution for BASIC")
-    #     bounds = [range_pitch_offset, range_gravity, range_delay]
-    #     get_error_with_data = partial(get_error_sim_basic, data_dict=data_dict, bbx_loop_range=bbx_loop_range)
-    #     optimal_params = get_optimal_params(get_error_with_data, bounds, "BASIC")
-    #     settings.pitch_offset_basic, settings.tpa_gravity, settings.tpa_delay = optimal_params
+    conf1 = config
+    sim1 = evaluate(SimAdvanced(config=conf1), bbx_loop_range, needs_results=True, context=context)
 
-    sim_advanced = SimAdvanced(config=config)
-    # sim_basic = Sim_basic(in_pitch_offset=settings.pitch_offset_basic, in_gravity=settings.tpa_gravity, in_delay=settings.tpa_delay)
+    conf2 = config
+    conf2.drag_k = 0.002
+    sim2 = evaluate(SimAdvanced(config=conf2), bbx_loop_range, needs_results=True, context=context)
 
-    # error_basic = get_error(sim_basic, data_dict, bbx_loop_range)
-    error_advanced, data_sim_advanced, steps_sim_advanced = evaluate(sim_advanced, bbx_loop_range, needs_results=True, context=context)
+    CLISettingsPrinter.print_cli_settings(advanced=conf1)
 
-    data_time = data_dict[header_time]  # Time in seconds
-    data_gps_speed = data_dict[header_gps_speed]  # GPS speed values
-    data_throttle = data_dict['Throttle']  # Throttle values
-    data_pitch_degrees = data_dict[header_pitch] * 180 / math.pi  # Pitch values
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [14, 3, 3]})
+    plot_data(data_dict, sim1, axes[0], axes[1], axes[2], colorset=['C0', 'C1', 'C2'], suffix='base')  # *np.transpose(axes)[0]
+    plot_data(data_dict, sim2, axes[0], axes[1], axes[2], colorset=['C0', 'C3', 'C4'], suffix='less drag')  # *np.transpose(axes)[0]
 
-    valid_gps_speeds = [val for val in data_gps_speed if not math.isnan(val)]
-
-    # Create the figure
-    fig, (ax_gps_speed, ax_dbg, ax3) = plt.subplots(3, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [7, 5, 3]})
-    fig.subplots_adjust(right=0.8)
-
-    # Adjust the space between plots to zero
-    plt.subplots_adjust(hspace=0)
-
-    colors_gps_speed = 'red'
-    colors_sim_speed = 'tab:blue'
-    lw = 1
-
-    data_gps_speed = np.multiply(data_gps_speed, 3.6)
-    data_sim_advanced = np.multiply(data_sim_advanced, 3.6)
-    max_y_value = max(max(valid_gps_speeds), max(data_sim_advanced)) * 1.2
-    max_y_value =  min(max_y_value, 200)
-
-    # First plot (GPS Speed over Time)
-    label_gps_speed = 'GPS Speed (m/s)'
-    line_gps_speed = ax_gps_speed.plot(data_time, data_gps_speed, label=label_gps_speed, color=colors_gps_speed, lw=lw)[0]
-    ax_gps_speed.set_ylabel(label_gps_speed, color=colors_gps_speed)
-    ax_gps_speed.tick_params(axis='y', labelcolor=colors_gps_speed)
-    ax_gps_speed.grid(True)
-
-    # Create a secondary y-axis for the simple simulation
-    # ax_simulation1 = ax_gps_speed.twinx()
-    # line_simulation1 = ax_simulation1.plot(data_time, data_sim_basic, label=f'Basic Simulation\n(err = {math.sqrt(error_basic / math.pi * 2):.2f})', color='g')[0]
-    # ax_simulation1.set_ylabel('Simple Simulation', color='g')
-    # ax_simulation1.tick_params(axis='y', labelcolor='g')
-
-    ax_simulation2 = ax_gps_speed.twinx()
-    ax_simulation2.spines['right'].set_position(('outward', 20))
-    line_simulation2 = ax_simulation2.plot(
-        data_time,
-        data_sim_advanced,
-        label=f'Advanced Simulation\n(err = {math.sqrt(error_advanced / math.pi * 2):.2f})',
-        color=colors_sim_speed
-    )[0]
-    ax_simulation2.set_ylabel('Advanced Simulation', color=colors_sim_speed)
-    ax_simulation2.tick_params(axis='y', labelcolor=colors_sim_speed)
-
-    lines = [line_gps_speed, line_simulation2]
-    labels = [line.get_label() for line in lines]
-    ax_gps_speed.legend(lines, labels, loc='upper left')
-
-    ax_gps_speed.set_ylim(0, max_y_value)
-    # ax_simulation1.set_ylim(0, max_y_value)
-    ax_simulation2.set_ylim(0, max_y_value)
-
-    # AX BTW
-    a, thrust_force, drag_force, gravity_force, input_power, power_loss = np.transpose(steps_sim_advanced)
-    ax_dbg.plot(data_time, thrust_force, label='thrust_force')
-    ax_dbg.plot(data_time, drag_force, label='drag_force')
-    ax_dbg.plot(data_time, gravity_force, label='gravity_force')
-    ax_dbg.plot(data_time, np.sum((thrust_force, drag_force, gravity_force), axis=0), label='total')
-    ax_dbg.legend()
-    ax_dbg.grid(True)
-
-    # Second plot (Throttle and Pitch over Time)
-    throttle_color = 'orange'
-    ax3.plot(data_time, data_throttle, throttle_color, label='Throttle')  # Plot throttle in red
-    ax3.set_ylabel('Throttle', color=throttle_color)
-    ax3.tick_params(axis='y', colors=throttle_color)
-    ax3.grid(axis='y', linestyle=':', color=throttle_color)  # Make only throttle horizontal grid marks red and dotted
-    ax3.grid(axis='x')  # Keep vertical lines the same as the top plot
-    ax3.set_ylim(0, 1.1)
-
-    # Create a second Y-axis on the right for pitch
-    pitch_color = 'green'
-    ax4 = ax3.twinx()
-    ax4.plot(data_time, data_pitch_degrees, pitch_color, label='Pitch')  # Plot pitch in blue
-    ax4.set_ylabel('Pitch', color=pitch_color)
-    ax4.tick_params(axis='y', colors=pitch_color)
-    ax4.set_ylim(-100, 100)
-    ax4.axhline(0, linestyle=':', color=pitch_color)  # Add a dotted blue line at pitch = 0
-
-    # Align the legends
-    # ax2.legend(loc='upper left')
-    # ax3.legend(loc='upper right')
-
-    # Show the plot
-    CLISettingsPrinter.print_cli_settings(advanced=sim_advanced.config)
     plt.tight_layout()
+    fig.subplots_adjust(hspace=0.05, left=0.04, right=1, wspace=0.1)
+
     plt.show()
+
+
+if __name__ == '__main__':
+    main()
