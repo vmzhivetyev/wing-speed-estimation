@@ -39,12 +39,13 @@ class SimAdvanced:
         self.twr = config.thrust / self.mass
         self.prop_pitch = config.prop_pitch  # Inches
         self.drag_coefficient = config.drag_k
+        self.drag_coefficient_elevator = config.drag_k_elevator
         self.motor_kv = config.motor_kv  # RPM per volt
         self.max_voltage = config.max_voltage  # 4S LiPo
         self.max_rpm = self.motor_kv * self.max_voltage  # Theoretical max RPM
         self.pitch_offset = config.pitch_offset_advanced
 
-    def step(self, speed, roll, pitch, rpms, voltage, total_current, throttle):
+    def step(self, speed, roll, pitch, rpms, voltage, total_current, throttle, elevator):
         standby_current = 0.5
         all_motors_current = max(0, total_current - standby_current)
 
@@ -63,6 +64,7 @@ class SimAdvanced:
 
         # Compute drag
         drag_force = - self.drag_coefficient * speed ** 2
+        elevator_drag_force = - elevator * self.drag_coefficient_elevator * speed ** 2
 
         # Compute gravity effect
         corrected_pitch = math.degrees(pitch) + self.pitch_offset
@@ -78,10 +80,10 @@ class SimAdvanced:
         thrust_force *= loss_thrust_coeff  # Apply scaling
 
         # Compute acceleration
-        net_force = thrust_force + drag_force + gravity_force
+        net_force = thrust_force + drag_force + gravity_force + elevator_drag_force
         a = net_force / self.mass
         # assert speed < 200 / 3.6
-        return a, thrust_force, drag_force, gravity_force, input_power, power_loss
+        return a, thrust_force, drag_force, elevator_drag_force, gravity_force, input_power, power_loss
 
 
 '''

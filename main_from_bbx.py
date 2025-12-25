@@ -20,16 +20,16 @@ def evaluate(sim, bbx_loop_range, needs_results, context):
     error = 0
     count = 0
 
-    dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms = context
+    dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms, elevators = context
     v = next(x for x in gps_speeds if not math.isnan(x))
 
     v_results = []
     steps = []
 
     for i in bbx_loop_range:
-        step_data = sim.step(v, rolls[i], pitches[i], rpms[i], voltages[i], currents[i], throttles[i])
+        step_data = sim.step(v, rolls[i], pitches[i], rpms[i], voltages[i], currents[i], throttles[i], elevators[i])
         steps.append(step_data)
-        a, thrust_force, drag_force, gravity_force, input_power, power_loss = step_data
+        a, thrust_force, drag_force, elevator_drag_force, gravity_force, input_power, power_loss = step_data
         v = v + a * dt
         v = max(v, 0)
         if needs_results:
@@ -110,7 +110,8 @@ def make_context(data_dict, bbx_loop_range):
     rpms_keys = [x for x in data_dict.keys() if x.startswith("true_rpm")]
     rpms = [data_dict[key] for key in rpms_keys]
     rpms = np.transpose(rpms)
-    return dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms
+    elevators = (data_dict['servo[2]'] - 1500) / 500
+    return dt, pitches, rolls, throttles, voltages, gps_speeds, currents, rpms, elevators
 
 
 def plot_data(data_dict, sim_data, ax_gps_speed, ax_forces, ax_throttle, colorset, suffix: str):
@@ -161,10 +162,11 @@ def plot_data(data_dict, sim_data, ax_gps_speed, ax_forces, ax_throttle, colorse
     ax_sim_speed.set_ylim(0, max_y_value)
 
     # AX BTW
-    a, thrust_force, drag_force, gravity_force, input_power, power_loss = np.transpose(steps_sim_advanced)
-    ax_forces.plot(data_time, thrust_force, label='thrust_force')
-    ax_forces.plot(data_time, drag_force, label='drag_force')
-    ax_forces.plot(data_time, gravity_force, label='gravity_force')
+    a, thrust_force, drag_force, elevator_drag_force, gravity_force, input_power, power_loss = np.transpose(steps_sim_advanced)
+    # ax_forces.plot(data_time, thrust_force, label='thrust_force')
+    ax_forces.plot(data_time, drag_force, label=f'drag_force {suffix}')
+    ax_forces.plot(data_time, elevator_drag_force, label=f'elevator_drag_force {suffix}')
+    # ax_forces.plot(data_time, gravity_force, label='gravity_force')
     ax_forces.plot(data_time, np.sum((thrust_force, drag_force, gravity_force), axis=0), label='total')
     ax_forces.legend()
     ax_forces.grid(True)
@@ -180,7 +182,7 @@ def plot_data(data_dict, sim_data, ax_gps_speed, ax_forces, ax_throttle, colorse
     # Create a second Y-axis on the right for pitch
     pitch_color = 'green'
     ax4 = ax_throttle.twinx()
-    ax4.plot(data_time, data_pitch_degrees, pitch_color, label='Pitch')  # Plot pitch in blue
+    ax4.plot(data_time, data_pitch_degrees, pitch_color, label=f'Pitch {suffix}')  # Plot pitch in blue
     ax4.set_ylabel('Pitch', color=pitch_color)
     ax4.tick_params(axis='y', colors=pitch_color)
     ax4.set_ylim(-100, 100)
@@ -224,7 +226,7 @@ def main():
     sim1 = evaluate(SimAdvanced(config=conf1), bbx_loop_range, needs_results=True, context=context)
 
     conf2 = config
-    conf2.drag_k = 0.002
+    conf2.drag_k_elevator = 0.005
     sim2 = evaluate(SimAdvanced(config=conf2), bbx_loop_range, needs_results=True, context=context)
 
     CLISettingsPrinter.print_cli_settings(advanced=conf1)

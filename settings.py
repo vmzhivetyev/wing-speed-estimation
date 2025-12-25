@@ -36,6 +36,7 @@ class AdvancedConfig:
         self.max_voltage = basic_config.max_voltage
         self.prop_pitch = 2.4  # inches
         self.drag_k = 0.001
+        self.drag_k_elevator = 0.000
         self.thrust = 0.9  # kilograms
         self.pitch_offset_advanced = -15
 
